@@ -37,6 +37,9 @@ Cache* cache;
 
 uns64 cycle = 1;
 
+Addr mockAddrs[] = {0x6b8b4567, 0x327b23c6, 0x643c9869, 0x66334873,
+                    0x74b0dc51, 0x19495cff, 0x2ae8944a, 0x12345678};
+
 // Test initialization of cache
 TEST(CacheTests, InitFunct) {
     cache = cache_new(32 * 1024, 8, 64, 0);
@@ -45,26 +48,56 @@ TEST(CacheTests, InitFunct) {
 
 // Check cache_access when empty
 TEST(CacheTests, EmptyCacheAccess) {
-    Addr mockAddr = 0x123456789ABCDEF;
+    Addr mockAddr = mockAddrs[0];
     Flag is_write = FALSE;
     uns core_id = 0;
     Flag result = cache_access(cache, mockAddr, is_write, core_id);
     EXPECT_EQ(MISS, result);
+    EXPECT_EQ(1, cache->stat_read_access);
+    EXPECT_EQ(1, cache->stat_read_miss);
 }
 
 // Test insert of cache line
 TEST(CacheTests, LineInsert) {
-    Addr mockAddr = 0x123456789ABCDEF;
+    Addr mockAddr = mockAddrs[0];
     mockAddr = mockAddr/cache->num_ways;
     Flag is_write = FALSE;
     uns core_id = 0;
     cache_install(cache, mockAddr, is_write, core_id);
-    EXPECT_EQ(0, cache->sets->line[0].core_id);
-    EXPECT_TRUE(cache->sets->line[0].valid);
-    EXPECT_EQ(mockAddr, cache->sets->line[0].tag);
+    EXPECT_EQ(0, cache->sets[0].line[0].core_id);
+    EXPECT_TRUE(cache->sets[0].line[0].valid);
+    EXPECT_EQ(mockAddr, cache->sets[0].line[0].tag);
+    EXPECT_EQ(0, cache->stat_dirty_evicts);
 }
 
 // Test cache_access with one entry
+TEST(CacheTests, LineRetrieve) {
+    Addr mockAddr = mockAddrs[0];
+    mockAddr = mockAddr/cache->num_ways;
+    Flag is_write = FALSE;
+    uns core_id = 0;
+    Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    EXPECT_EQ(HIT, result);
+    EXPECT_EQ(2, cache->stat_read_access);
+    EXPECT_EQ(1, cache->stat_read_miss);
+}
+
+// Test filling cache to num_sets
+TEST(CacheTests, CacheFill) {
+    Cache_Line* line;
+    for(int i = 1; i < cache->num_ways; i++){
+        line = &cache->sets[0].line[i];
+        Addr mockAddr = mockAddrs[i];
+        mockAddr = mockAddr/cache->num_ways;
+        Flag is_write = FALSE;
+        uns core_id = 0;
+        cache_install(cache, mockAddr, is_write, core_id);
+        EXPECT_EQ(0, line->core_id);
+        EXPECT_TRUE(line->valid);
+        EXPECT_EQ(mockAddr, line->tag);
+    }
+    EXPECT_EQ(0, cache->stat_dirty_evicts);
+}
 
 GTEST_API_ int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);

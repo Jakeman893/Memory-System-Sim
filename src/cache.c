@@ -70,8 +70,8 @@ Flag cache_access(Cache *c, Addr lineaddr, uns is_write, uns core_id){
 
     // Your Code Goes Here
     Cache_Line* line;
-    for(uns i = 0; i < c->num_sets; i++) {
-        line = &c->sets->line[i];
+    for(uns i = 0; i < c->num_ways; i++) {
+        line = &c->sets[0].line[i];
         if (!line->valid) continue;
         if(line->tag == lineaddr && line->core_id == core_id){
             outcome = HIT;
@@ -113,7 +113,7 @@ void cache_install(Cache *c, Addr lineaddr, uns is_write, uns core_id){
     // Find victim using cache_find_victim
     uns victim = cache_find_victim(c, 0, core_id); 
     // Initialize the evicted entry
-    c->last_evicted_line = c->sets->line[victim];
+    c->last_evicted_line = c->sets[0].line[victim];
     // Initialize the victime entry
     Cache_Line newLine;
     newLine.core_id = core_id;
@@ -121,7 +121,7 @@ void cache_install(Cache *c, Addr lineaddr, uns is_write, uns core_id){
     newLine.tag = lineaddr;
     newLine.valid = TRUE;
     newLine.last_access_time = cycle;
-    c->sets->line[victim] = newLine;
+    c->sets[0].line[victim] = newLine;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -136,8 +136,8 @@ uns cache_find_victim(Cache *c, uns set_index, uns core_id){
     // If there is space in the cache, don't need to
     // replace
     Cache_Line* line;
-    for(uns i = 0; i < c->num_sets; i++) {
-        line = &c->sets->line[i];    
+    for(uns i = 0; i < c->num_ways; i++) {
+        line = &c->sets[set_index].line[i];    
         if(!line->valid)
             return i;
     }
@@ -145,19 +145,22 @@ uns cache_find_victim(Cache *c, uns set_index, uns core_id){
     // Get victim based on policy
     switch(c->repl_policy){
         case 0:    // LRU
-            for(uns i = 0; i < c->num_sets; i++) {
-                Cache_Line* line = &c->sets->line[i];
+            for(uns i = 0; i < c->num_ways; i++) {
+                Cache_Line* line = &c->sets[set_index].line[i];
                 if(line->last_access_time < minAccessTime) {
                     victim = i;
                     minAccessTime = line->last_access_time;
                 }
             }
         case 1:    // RAND
-            victim = rand() % c->num_sets;
+            victim = rand() % c->num_ways;
         default:
             break;
     }
 
+    // Update stats
+    if(c->sets[set_index].line[victim].dirty)
+        ++c->stat_dirty_evicts;
     return victim;
 }
 
