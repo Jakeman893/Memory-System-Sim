@@ -89,6 +89,7 @@ Flag cache_access(Cache *c, Addr lineaddr, uns is_write, uns core_id){
             ++c->stat_read_access;
         line->last_access_time = cycle;
     } else {
+        cache_install(c, lineaddr, is_write, core_id);
         if (is_write == TRUE) {
             line->dirty = TRUE;
             ++c->stat_write_miss;
@@ -131,7 +132,7 @@ void cache_install(Cache *c, Addr lineaddr, uns is_write, uns core_id){
 
 uns cache_find_victim(Cache *c, uns set_index, uns core_id){
     uns victim=0;
-    uns minAccessTime = 0;
+    uns minAccessTime = 0xFFFFFFFF;
    
     // If there is space in the cache, don't need to
     // replace
@@ -152,8 +153,10 @@ uns cache_find_victim(Cache *c, uns set_index, uns core_id){
                     minAccessTime = line->last_access_time;
                 }
             }
+            break;
         case 1:    // RAND
             victim = rand() % c->num_ways;
+            break;
         default:
             break;
     }

@@ -38,27 +38,18 @@ Cache* cache;
 uns64 cycle = 1;
 
 Addr mockAddrs[] = {0x6b8b4567, 0x327b23c6, 0x643c9869, 0x66334873,
-                    0x74b0dc51, 0x19495cff, 0x2ae8944a, 0x12345678};
+                    0x74b0dc51, 0x19495cff, 0x2ae8944a, 0x12345678,
+                    0x5f00d4ce, 0x1e5c2a58, 0x7aebd230, 0x53cd4764,
+                    0x06f21576, 0x7bb31cd7, 0x5b132938};
 
 // Test initialization of cache
-TEST(CacheTests, InitFunct) {
+TEST(CacheInstallTests, InitFunct) {
     cache = cache_new(32 * 1024, 8, 64, 0);
     EXPECT_FALSE(cache == NULL);
 }
 
-// Check cache_access when empty
-TEST(CacheTests, EmptyCacheAccess) {
-    Addr mockAddr = mockAddrs[0];
-    Flag is_write = FALSE;
-    uns core_id = 0;
-    Flag result = cache_access(cache, mockAddr, is_write, core_id);
-    EXPECT_EQ(MISS, result);
-    EXPECT_EQ(1, cache->stat_read_access);
-    EXPECT_EQ(1, cache->stat_read_miss);
-}
-
 // Test insert of cache line
-TEST(CacheTests, LineInsert) {
+TEST(CacheInstallTests, LineInsert) {
     Addr mockAddr = mockAddrs[0];
     mockAddr = mockAddr/cache->num_ways;
     Flag is_write = FALSE;
@@ -70,22 +61,11 @@ TEST(CacheTests, LineInsert) {
     EXPECT_EQ(0, cache->stat_dirty_evicts);
 }
 
-// Test cache_access with one entry
-TEST(CacheTests, LineRetrieve) {
-    Addr mockAddr = mockAddrs[0];
-    mockAddr = mockAddr/cache->num_ways;
-    Flag is_write = FALSE;
-    uns core_id = 0;
-    Flag result = cache_access(cache, mockAddr, is_write, core_id);
-    EXPECT_EQ(HIT, result);
-    EXPECT_EQ(2, cache->stat_read_access);
-    EXPECT_EQ(1, cache->stat_read_miss);
-}
-
 // Test filling cache to num_sets
-TEST(CacheTests, CacheFill) {
+TEST(CacheInstallTests, CacheFill) {
     Cache_Line* line;
     for(int i = 1; i < cache->num_ways; i++){
+        ++cycle;
         line = &cache->sets[0].line[i];
         Addr mockAddr = mockAddrs[i];
         mockAddr = mockAddr/cache->num_ways;
@@ -97,6 +77,117 @@ TEST(CacheTests, CacheFill) {
         EXPECT_EQ(mockAddr, line->tag);
     }
     EXPECT_EQ(0, cache->stat_dirty_evicts);
+}
+
+// Test adding to full cache with LRU
+TEST(CacheInstallTests, CacheConflict) {
+    ++cycle;
+    Addr mockAddr = mockAddrs[8];
+    mockAddr = mockAddr/cache->num_ways;
+    Flag is_write = FALSE;
+    uns core_id = 0;
+    cache_install(cache, mockAddr, is_write, core_id);
+    Cache_Line* line = &cache->sets[0].line[0];
+    EXPECT_EQ(mockAddrs[0]/cache->num_ways, cache->last_evicted_line.tag);
+    EXPECT_EQ(0, cache->stat_dirty_evicts);
+    EXPECT_EQ(mockAddr, line->tag);
+    EXPECT_TRUE(line->valid);
+    EXPECT_EQ(0, line->core_id);
+}
+
+// Test initialization of cache
+TEST(CacheAccessTests, InitFunct) {
+    delete cache;
+    cache = cache_new(32 * 1024, 8, 64, 0);
+    cycle = 0;
+    EXPECT_FALSE(cache == NULL);
+}
+
+// Check cache_access when empty
+TEST(CacheAccessTests, CacheAddLineRead) {
+    ++cycle;
+    cache = cache_new(32 * 1024, 8, 64, 0);
+    Addr mockAddr = mockAddrs[0] / cache->num_ways;
+    Flag is_write = FALSE;
+    uns core_id = 0;
+    Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    EXPECT_EQ(MISS, result);
+    EXPECT_EQ(1, cache->stat_read_access);
+    EXPECT_EQ(1, cache->stat_read_miss);
+}
+
+// Test cache_access with one entry
+TEST(CacheAccessTests, LineRetrieve) {
+    ++cycle;
+    Addr mockAddr = mockAddrs[0] / cache->num_ways;
+    Flag is_write = FALSE;
+    uns core_id = 0;
+    Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    EXPECT_EQ(HIT, result);
+    EXPECT_EQ(2, cache->stat_read_access);
+    EXPECT_EQ(1, cache->stat_read_miss);
+}
+
+// Test cache_access with write
+TEST(CacheAccessTests, CacheAddLineWrite) {
+    ++cycle;
+    Addr mockAddr = mockAddrs[1] / cache->num_ways;
+    Flag is_write = TRUE;
+    uns core_id = 0;
+    Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    EXPECT_EQ(MISS, result);
+    EXPECT_EQ(2, cache->stat_read_access);
+    EXPECT_EQ(1, cache->stat_read_miss);
+    EXPECT_EQ(1, cache->stat_write_access);
+    EXPECT_EQ(1, cache->stat_write_miss);
+}
+
+// Fill cache
+TEST(CacheAccessTests, CacheFill) {
+    Cache_Line* line;
+    for(int i = 2; i < cache->num_ways; i++){
+        ++cycle;
+        line = &cache->sets[0].line[i];
+        Addr mockAddr = mockAddrs[i];
+        mockAddr = mockAddr/cache->num_ways;
+        Flag is_write = TRUE;
+        uns core_id = 0;
+        Flag result = cache_access(cache, mockAddr, is_write, core_id);
+        EXPECT_EQ(MISS, result);
+        EXPECT_EQ(0, line->core_id);
+        EXPECT_TRUE(line->valid);
+        EXPECT_EQ(mockAddr, line->tag);
+    }
+    EXPECT_EQ(0, cache->stat_dirty_evicts);
+}
+
+// Test replacement of non-write line
+TEST(CacheAccessTests, CacheReplaceNonWrite) {
+    ++cycle;
+    Addr mockAddr = mockAddrs[9] / cache->num_ways;
+    Flag is_write = TRUE;
+    uns core_id = 0;
+    Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    EXPECT_EQ(MISS, result);
+    EXPECT_EQ(2, cache->stat_read_access);
+    EXPECT_EQ(1, cache->stat_read_miss);
+    EXPECT_EQ(8, cache->stat_write_access);
+    EXPECT_EQ(8, cache->stat_write_miss);
+}
+
+// Test replacement of write line
+TEST(CacheAccessTests, CacheReplaceWrite) {
+    ++cycle;
+    Addr mockAddr = mockAddrs[10] / cache->num_ways;
+    Flag is_write = TRUE;
+    uns core_id = 0;
+    Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    EXPECT_EQ(MISS, result);
+    EXPECT_EQ(2, cache->stat_read_access);
+    EXPECT_EQ(1, cache->stat_read_miss);
+    EXPECT_EQ(9, cache->stat_write_access);
+    EXPECT_EQ(9, cache->stat_write_miss);
+    EXPECT_EQ(1, cache->stat_dirty_evicts);
 }
 
 GTEST_API_ int main(int argc, char **argv) {
