@@ -35,7 +35,9 @@
 
 Cache* cache;
 
-// Test initialization of pipeline function
+uns64 cycle = 1;
+
+// Test initialization of cache
 TEST(CacheTests, InitFunct) {
     cache = cache_new(32 * 1024, 8, 64, 0);
     EXPECT_FALSE(cache == NULL);
@@ -43,12 +45,26 @@ TEST(CacheTests, InitFunct) {
 
 // Check cache_access when empty
 TEST(CacheTests, EmptyCacheAccess) {
-    Addr mockAddr = 0x12345678;
+    Addr mockAddr = 0x123456789ABCDEF;
     Flag is_write = FALSE;
     uns core_id = 0;
     Flag result = cache_access(cache, mockAddr, is_write, core_id);
     EXPECT_EQ(MISS, result);
 }
+
+// Test insert of cache line
+TEST(CacheTests, LineInsert) {
+    Addr mockAddr = 0x123456789ABCDEF;
+    mockAddr = mockAddr/cache->num_ways;
+    Flag is_write = FALSE;
+    uns core_id = 0;
+    cache_install(cache, mockAddr, is_write, core_id);
+    EXPECT_EQ(0, cache->sets->line[0].core_id);
+    EXPECT_TRUE(cache->sets->line[0].valid);
+    EXPECT_EQ(mockAddr, cache->sets->line[0].tag);
+}
+
+// Test cache_access with one entry
 
 GTEST_API_ int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);

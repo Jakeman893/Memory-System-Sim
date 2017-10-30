@@ -66,11 +66,40 @@ void    cache_print_stats    (Cache *c, char *header){
 ////////////////////////////////////////////////////////////////////
 
 Flag cache_access(Cache *c, Addr lineaddr, uns is_write, uns core_id){
-  Flag outcome=MISS;
+    Flag outcome=MISS;
 
-  // Your Code Goes Here
-  
-  return outcome;
+    // Your Code Goes Here
+    Cache_Line* line;
+    for(uns i = 0; i < c->num_sets; i++) {
+        line = &c->sets->line[i];
+        if (!line->valid) continue;
+        if(line->tag == lineaddr && line->core_id == core_id){
+            outcome = HIT;
+            break;
+        }
+    }
+
+    // If a line was found, check if write and mark as dirty
+    // Set line last access time
+    if(outcome == HIT){
+        if (is_write == TRUE) {
+            line->dirty = TRUE;
+            ++c->stat_write_access;
+        } else
+            ++c->stat_read_access;
+        line->last_access_time = cycle;
+    } else {
+        if (is_write == TRUE) {
+            line->dirty = TRUE;
+            ++c->stat_write_miss;
+            ++c->stat_write_access;
+        } else {
+            ++c->stat_read_miss;
+            ++c->stat_read_access;
+        }
+    }
+
+    return outcome;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -81,11 +110,18 @@ Flag cache_access(Cache *c, Addr lineaddr, uns is_write, uns core_id){
 
 void cache_install(Cache *c, Addr lineaddr, uns is_write, uns core_id){
 
-  // Your Code Goes Here
-  // Find victim using cache_find_victim
-  // Initialize the evicted entry
-  // Initialize the victime entry
- 
+    // Find victim using cache_find_victim
+    uns victim = cache_find_victim(c, 0, core_id); 
+    // Initialize the evicted entry
+    c->last_evicted_line = c->sets->line[victim];
+    // Initialize the victime entry
+    Cache_Line newLine;
+    newLine.core_id = core_id;
+    newLine.dirty = is_write;
+    newLine.tag = lineaddr;
+    newLine.valid = TRUE;
+    newLine.last_access_time = cycle;
+    c->sets->line[victim] = newLine;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -94,10 +130,34 @@ void cache_install(Cache *c, Addr lineaddr, uns is_write, uns core_id){
 
 
 uns cache_find_victim(Cache *c, uns set_index, uns core_id){
-  uns victim=0;
+    uns victim=0;
+    uns minAccessTime = 0;
+   
+    // If there is space in the cache, don't need to
+    // replace
+    Cache_Line* line;
+    for(uns i = 0; i < c->num_sets; i++) {
+        line = &c->sets->line[i];    
+        if(!line->valid)
+            return i;
+    }
 
-  // TODO: Write this using a switch case statement
-  
-  return victim;
+    // Get victim based on policy
+    switch(c->repl_policy){
+        case 0:    // LRU
+            for(uns i = 0; i < c->num_sets; i++) {
+                Cache_Line* line = &c->sets->line[i];
+                if(line->last_access_time < minAccessTime) {
+                    victim = i;
+                    minAccessTime = line->last_access_time;
+                }
+            }
+        case 1:    // RAND
+            victim = rand() % c->num_sets;
+        default:
+            break;
+    }
+
+    return victim;
 }
 

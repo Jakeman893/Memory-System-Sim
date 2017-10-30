@@ -7,10 +7,10 @@ A_H_LOC = $(addprefix $(SRC_DIR), $(A_HEAD))
 
 all: $(A_SRC_LOC) cache.unittest
 
-%.o: %.cpp
+%.o: %.c
 	g++ -g -Wall -c -o $@ $<
 
-cache.unittest: $(A_OBJS) ../../src/*.h
+cache.unittest: $(A_OBJS) ../../src/cache.h
 	g++ -g cache_unittest.cpp -lgtest -lgtest_main -lpthread $^ -o $@
 
 clean:
