@@ -6,7 +6,7 @@
             "name": "C++ Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "../tests/cache_test/cache.unittest",
+            "program": "../tests/multicache_test/multicache.unittest",
             "args": [""],
             "stopAtEntry": true,
             "cwd": "/mnt/c/Users/jakem.JACOB-PC/Source/Lab4/src",

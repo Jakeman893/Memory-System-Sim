@@ -34,11 +34,16 @@
 #include "../../src/cache.h"
 #include "../../src/memsys.h"
 
-Cache* cache;
+#define DCACHE_HIT_LATENCY   1
+#define ICACHE_HIT_LATENCY   1
+#define L2CACHE_HIT_LATENCY  10
+#define DRAM_LATENCY_FIXED  100
+
+Memsys* sys;
 
 uns64 cycle = 1;
 
-MODE        SIM_MODE        = SIM_MODE_A;
+MODE        SIM_MODE        = SIM_MODE_B;
 uns64       CACHE_LINESIZE  = 64;
 uns64       REPL_POLICY     = 0; // 0:LRU 1:RAND
 
@@ -62,44 +67,57 @@ Addr mockAddrs[] = {0x6b8b4567, 0x327b23c6, 0x643c9869, 0x66334873,
                     0x06f21576, 0x7bb31cd7, 0x5b132938};
 
 // Test initialization of cache
-TEST(CacheInstallTests, InitFunct) {
-    cache = cache_new(32 * 1024, 8, 64, 0);
-    EXPECT_FALSE(cache == NULL);
+TEST(MemsysTests, InitFunct) {
+    sys = memsys_new();
+    EXPECT_FALSE(sys == NULL);
 }
 
-// Test insert of cache line
-TEST(CacheInstallTests, LineInsert) {
+// Test access of empty instruction cache
+TEST(MemsysTests, InstructionCacheEmpty) {
     Addr mockAddr = mockAddrs[0];
-    mockAddr = mockAddr/cache->num_ways;
-    Flag is_write = FALSE;
+    Access_Type type = ACCESS_TYPE_IFETCH;
     uns core_id = 0;
-    cache_install(cache, mockAddr, is_write, core_id);
+    Cache* cache = sys->icache;
+    uns64 delay = memsys_access_modeBC(sys, mockAddr, type, core_id);
     EXPECT_EQ(0, cache->sets[0].line[0].core_id);
     EXPECT_TRUE(cache->sets[0].line[0].valid);
     EXPECT_EQ(mockAddr, cache->sets[0].line[0].tag);
     EXPECT_EQ(0, cache->stat_dirty_evicts);
+    EXPECT_EQ(ICACHE_HIT_LATENCY + L2CACHE_HIT_LATENCY + DRAM_LATENCY_FIXED, delay);
 }
 
-// Test filling cache to num_sets
-TEST(CacheInstallTests, CacheFill) {
-    Cache_Line* line;
-    for(int i = 1; i < cache->num_ways; i++){
-        ++cycle;
-        line = &cache->sets[0].line[i];
-        Addr mockAddr = mockAddrs[i];
-        mockAddr = mockAddr/cache->num_ways;
-        Flag is_write = FALSE;
-        uns core_id = 0;
-        cache_install(cache, mockAddr, is_write, core_id);
-        EXPECT_EQ(0, line->core_id);
-        EXPECT_TRUE(line->valid);
-        EXPECT_EQ(mockAddr, line->tag);
-    }
+// Test access of empty data cache with no write
+TEST(MemsysTests, DataCacheEmptyNoWrite) {
+    Addr mockAddr = mockAddrs[0];
+    Access_Type type = ACCESS_TYPE_LOAD;
+    uns core_id = 0;
+    Cache* cache = sys->dcache;
+    uns64 delay = memsys_access_modeBC(sys, mockAddr, type, core_id);
+    EXPECT_EQ(0, cache->sets[0].line[0].core_id);
+    EXPECT_TRUE(cache->sets[0].line[0].valid);
+    EXPECT_EQ(mockAddr, cache->sets[0].line[0].tag);
+    EXPECT_FALSE(cache->sets[0].line[0].dirty);
     EXPECT_EQ(0, cache->stat_dirty_evicts);
+    EXPECT_EQ(DCACHE_HIT_LATENCY + L2CACHE_HIT_LATENCY + DRAM_LATENCY_FIXED, delay);
+}
+
+// Test access of single line data cache with hit and write
+TEST(MemsysTests, DataCacheHitWrite) {
+    Addr mockAddr = mockAddrs[0];
+    Access_Type type = ACCESS_TYPE_STORE;
+    uns core_id = 0;
+    Cache* cache = sys->dcache;
+    uns64 delay = memsys_access_modeBC(sys, mockAddr, type, core_id);
+    EXPECT_EQ(0, cache->sets[0].line[0].core_id);
+    EXPECT_TRUE(cache->sets[0].line[0].valid);
+    EXPECT_EQ(mockAddr, cache->sets[0].line[0].tag);
+    EXPECT_TRUE(cache->sets[0].line[0].dirty);
+    EXPECT_EQ(0, cache->stat_dirty_evicts);
+    EXPECT_EQ(DCACHE_HIT_LATENCY, delay);
 }
 
 GTEST_API_ int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
-    delete cache;
+    delete sys;
 }
