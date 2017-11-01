@@ -85,15 +85,38 @@ uns64   dram_access(DRAM *dram,Addr lineaddr, Flag is_dram_write){
 ///////////////////////////////////////////////////////////////////
 
 uns64   dram_access_sim_rowbuf(DRAM *dram,Addr lineaddr, Flag is_dram_write){
-  uns64 delay=0;
-
+    uns64 delay = DRAM_T_CAS + DRAM_T_BUS;
+    uns64 bank_idx = 0;
+    uns64 row = 0;
     // Assume a mapping with consecutive lines in the same row
     // Assume a mapping with consecutive rowbufs in consecutive rows
     // You need to write this fuction to track open rows 
     // You will need to compute delay based on row hit/miss/empty
 
-  
-  return delay;
+    // With mapping of consecutive rows being in same bank, we have addressing
+    // BankID (n bits) | Row Num (n bits) | Row Line (n bits)
+    // Line will have been divided out already
+
+    // Find row in bank for the address (find value for row)
+    row = lineaddr % ROWBUF_SIZE;
+    // Remove lower bits from address for easier indexing
+    lineaddr /= ROWBUF_SIZE;
+    // Index lineaddr into relevant bank (find value for bank_idx)
+    // Index is the lower 4 bits 
+    bank_idx = lineaddr % DRAM_BANKS;
+    // Check if row buffer is empty or doesn't contain the row we seek
+    Rowbuf_Entry* bank_buf = &dram->perbank_row_buf[bank_idx];
+    if(!bank_buf->valid || bank_buf->rowid != row) {
+        // precharge (close row and prepare bank for access)
+        delay += DRAM_T_PRE;
+        // activate (opens row and places into row buffer)
+        delay += DRAM_T_ACT;
+        // Update rowid and validity of row
+        bank_buf->rowid = row;
+        bank_buf->valid = TRUE;
+    }
+
+    return delay;
 }
 
 
