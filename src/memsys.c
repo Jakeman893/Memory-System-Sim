@@ -210,6 +210,6 @@ uns64   memsys_L2_access(Memsys *sys, Addr lineaddr, Flag is_writeback, uns core
     //To get the delay of L2 MISS, you must use the dram_access() function
     //To perform writebacks to memory, you must use the dram_access() function
     //This will help us track your memory reads and memory writes
-    delay = dram_access(sys->dram, lineaddr, is_writeback);
+    delay += dram_access(sys->dram, lineaddr, is_writeback);
     return delay;
 }
