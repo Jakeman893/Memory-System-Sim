@@ -111,6 +111,7 @@ TEST(CacheAccessTests, CacheAddLineRead) {
     Flag is_write = FALSE;
     uns core_id = 0;
     Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    cache_install(cache, mockAddr, is_write, core_id);
     EXPECT_EQ(MISS, result);
     EXPECT_EQ(1, cache->stat_read_access);
     EXPECT_EQ(1, cache->stat_read_miss);
@@ -135,6 +136,7 @@ TEST(CacheAccessTests, CacheAddLineWrite) {
     Flag is_write = TRUE;
     uns core_id = 0;
     Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    cache_install(cache, mockAddr, is_write, core_id);
     EXPECT_EQ(MISS, result);
     EXPECT_EQ(2, cache->stat_read_access);
     EXPECT_EQ(1, cache->stat_read_miss);
@@ -153,6 +155,7 @@ TEST(CacheAccessTests, CacheFill) {
         Flag is_write = TRUE;
         uns core_id = 0;
         Flag result = cache_access(cache, mockAddr, is_write, core_id);
+        cache_install(cache, mockAddr, is_write, core_id);
         EXPECT_EQ(MISS, result);
         EXPECT_EQ(0, line->core_id);
         EXPECT_TRUE(line->valid);
@@ -168,6 +171,7 @@ TEST(CacheAccessTests, CacheReplaceNonWrite) {
     Flag is_write = TRUE;
     uns core_id = 0;
     Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    cache_install(cache, mockAddr, is_write, core_id);
     EXPECT_EQ(MISS, result);
     EXPECT_EQ(2, cache->stat_read_access);
     EXPECT_EQ(1, cache->stat_read_miss);
@@ -182,6 +186,7 @@ TEST(CacheAccessTests, CacheReplaceWrite) {
     Flag is_write = TRUE;
     uns core_id = 0;
     Flag result = cache_access(cache, mockAddr, is_write, core_id);
+    cache_install(cache, mockAddr, is_write, core_id);
     EXPECT_EQ(MISS, result);
     EXPECT_EQ(2, cache->stat_read_access);
     EXPECT_EQ(1, cache->stat_read_miss);

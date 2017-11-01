@@ -169,24 +169,33 @@ uns64 memsys_access_modeA(Memsys *sys, Addr lineaddr, Access_Type type, uns core
 ////////////////////////////////////////////////////////////////////
 
 uns64 memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type,uns core_id){
-  uns64 delay=0;
+    uns64 delay=0;
+    Flag is_write;
+    Cache* use_cache;
+    Flag result;
 
- 
-  if(type == ACCESS_TYPE_IFETCH){
-    // YOU NEED TO WRITE THIS PART AND UPDATE DELAY
-  }
-    
-
-  if(type == ACCESS_TYPE_LOAD){
-    // YOU NEED TO WRITE THIS PART AND UPDATE DELAY
-  }
-  
-
-  if(type == ACCESS_TYPE_STORE){
-    // YOU NEED TO WRITE THIS PART AND UPDATE DELAY
-  }
- 
-  return delay;
+    switch(type) {
+        case ACCESS_TYPE_IFETCH:
+            use_cache = sys->icache;
+            is_write = FALSE;
+            delay = ICACHE_HIT_LATENCY;
+            break;
+        case ACCESS_TYPE_LOAD:
+            use_cache = sys->dcache;
+            is_write = FALSE;
+            delay = DCACHE_HIT_LATENCY;
+            break;
+        case ACCESS_TYPE_STORE:
+            use_cache = sys->dcache;
+            is_write = TRUE;
+            delay = DCACHE_HIT_LATENCY;
+            break;
+    }
+    result = cache_access(use_cache, lineaddr, is_write, core_id);
+    if(result == MISS)
+        delay += memsys_L2_access(sys, lineaddr, is_write, core_id);
+        cache_install(use_cache, lineaddr, is_write, core_id);
+    return delay;
 }
 
 
@@ -196,11 +205,11 @@ uns64 memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type,uns core
 /////////////////////////////////////////////////////////////////////
 
 uns64   memsys_L2_access(Memsys *sys, Addr lineaddr, Flag is_writeback, uns core_id){
-  uns64 delay = L2CACHE_HIT_LATENCY;
+    uns64 delay = L2CACHE_HIT_LATENCY;
 
-  //To get the delay of L2 MISS, you must use the dram_access() function
-  //To perform writebacks to memory, you must use the dram_access() function
-  //This will help us track your memory reads and memory writes
-
-  return delay;
+    //To get the delay of L2 MISS, you must use the dram_access() function
+    //To perform writebacks to memory, you must use the dram_access() function
+    //This will help us track your memory reads and memory writes
+    delay = dram_access(sys->dram, lineaddr, is_writeback);
+    return delay;
 }

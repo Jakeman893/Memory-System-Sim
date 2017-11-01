@@ -89,7 +89,6 @@ Flag cache_access(Cache *c, Addr lineaddr, uns is_write, uns core_id){
             ++c->stat_read_access;
         line->last_access_time = cycle;
     } else {
-        cache_install(c, lineaddr, is_write, core_id);
         if (is_write == TRUE) {
             line->dirty = TRUE;
             ++c->stat_write_miss;
