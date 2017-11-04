@@ -3,3 +3,4 @@ src/sim
 traces/*
 *.unittest
 *.o
+results/*

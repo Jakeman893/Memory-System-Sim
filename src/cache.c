@@ -68,10 +68,12 @@ void    cache_print_stats    (Cache *c, char *header){
 Flag cache_access(Cache *c, Addr lineaddr, uns is_write, uns core_id){
     Flag outcome=MISS;
 
+    int set = lineaddr % c->num_sets;
+    lineaddr /= c->num_sets;
     // Your Code Goes Here
     Cache_Line* line;
     for(uns i = 0; i < c->num_ways; i++) {
-        line = &c->sets[0].line[i];
+        line = &c->sets[set].line[i];
         if (!line->valid) continue;
         if(line->tag == lineaddr && line->core_id == core_id){
             outcome = HIT;
@@ -90,7 +92,6 @@ Flag cache_access(Cache *c, Addr lineaddr, uns is_write, uns core_id){
         line->last_access_time = cycle;
     } else {
         if (is_write == TRUE) {
-            line->dirty = TRUE;
             ++c->stat_write_miss;
             ++c->stat_write_access;
         } else {
@@ -109,11 +110,12 @@ Flag cache_access(Cache *c, Addr lineaddr, uns is_write, uns core_id){
 ////////////////////////////////////////////////////////////////////
 
 void cache_install(Cache *c, Addr lineaddr, uns is_write, uns core_id){
-
+    int set = lineaddr % c->num_sets;
+    lineaddr /= c->num_sets;
     // Find victim using cache_find_victim
-    uns victim = cache_find_victim(c, 0, core_id); 
+    uns victim = cache_find_victim(c, set, core_id); 
     // Initialize the evicted entry
-    c->last_evicted_line = c->sets[0].line[victim];
+    c->last_evicted_line = c->sets[set].line[victim];
     // Initialize the victime entry
     Cache_Line newLine;
     newLine.core_id = core_id;
@@ -121,7 +123,7 @@ void cache_install(Cache *c, Addr lineaddr, uns is_write, uns core_id){
     newLine.tag = lineaddr;
     newLine.valid = TRUE;
     newLine.last_access_time = cycle;
-    c->sets[0].line[victim] = newLine;
+    c->sets[set].line[victim] = newLine;
 }
 
 ////////////////////////////////////////////////////////////////////
