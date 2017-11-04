@@ -193,8 +193,11 @@ uns64 memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type,uns core
     }
     result = cache_access(use_cache, lineaddr, is_write, core_id);
     if(result == MISS) {
-        delay += memsys_L2_access(sys, lineaddr, is_write, core_id);
+        delay += memsys_L2_access(sys, lineaddr, FALSE, core_id);
         cache_install(use_cache, lineaddr, is_write, core_id);
+        Cache_Line* line = &use_cache->last_evicted_line;
+        if(line->valid && line->dirty)
+            delay += memsys_L2_access(sys, line->tag, TRUE, core_id);
     }
     return delay;
 }

@@ -116,6 +116,7 @@ void cache_install(Cache *c, Addr lineaddr, uns is_write, uns core_id){
     uns victim = cache_find_victim(c, set, core_id); 
     // Initialize the evicted entry
     c->last_evicted_line = c->sets[set].line[victim];
+    c->last_evicted_line.tag = (c->last_evicted_line.tag * c->num_sets) + set;
     // Initialize the victime entry
     Cache_Line newLine;
     newLine.core_id = core_id;
