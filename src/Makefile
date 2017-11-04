@@ -1,7 +1,7 @@
 RM        := /bin/rm -rf
 SIM       := ./sim
 CC        := gcc
-CFLAGS    := -g -O2 -lm -std=gnu99 -W -Wall -Wno-unused-parameter
+CFLAGS    := -O2 -lm -std=gnu99 -W -Wall -Wno-unused-parameter
 DFLAGS    := -pg -g
 PFLAGS    := -pg
 

@@ -192,9 +192,10 @@ uns64 memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type,uns core
             break;
     }
     result = cache_access(use_cache, lineaddr, is_write, core_id);
-    if(result == MISS)
+    if(result == MISS) {
         delay += memsys_L2_access(sys, lineaddr, is_write, core_id);
         cache_install(use_cache, lineaddr, is_write, core_id);
+    }
     return delay;
 }
 
@@ -207,9 +208,13 @@ uns64 memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type,uns core
 uns64   memsys_L2_access(Memsys *sys, Addr lineaddr, Flag is_writeback, uns core_id){
     uns64 delay = L2CACHE_HIT_LATENCY;
 
+    Flag result = cache_access(sys->l2cache, lineaddr, is_writeback, core_id);
     //To get the delay of L2 MISS, you must use the dram_access() function
     //To perform writebacks to memory, you must use the dram_access() function
     //This will help us track your memory reads and memory writes
-    delay += dram_access(sys->dram, lineaddr, is_writeback);
+    if(result == MISS) {
+        delay += dram_access(sys->dram, lineaddr, is_writeback);
+        cache_install(sys->l2cache, lineaddr, is_writeback, core_id);
+    }
     return delay;
 }
