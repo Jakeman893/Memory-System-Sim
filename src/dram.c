@@ -94,19 +94,21 @@ uns64   dram_access_sim_rowbuf(DRAM *dram,Addr lineaddr, Flag is_dram_write){
     // You will need to compute delay based on row hit/miss/empty
 
     // With mapping of consecutive rows being in same bank, we have addressing
-    // BankID (n bits) | Row Num (n bits) | Row Line (n bits)
-    // Line will have been divided out already
+    // BankID (n bits) | Row Num (n bits) | Row Offset (n bits)
+
+    // Remove offset from lineaddr
+    lineaddr /= CACHE_LINESIZE;
 
     // Find row in bank for the address (find value for row)
     row = lineaddr % ROWBUF_SIZE;
-    // Remove lower bits from address for easier indexing
+    // Remove lower bits from address to index bank
     lineaddr /= ROWBUF_SIZE;
     // Index lineaddr into relevant bank (find value for bank_idx)
-    // Index is the lower 4 bits 
+    // Index is the lower ln(DRAM_BANKS) bits 
     bank_idx = lineaddr % DRAM_BANKS;
     // Check if row buffer is empty or doesn't contain the row we seek
     Rowbuf_Entry* bank_buf = &dram->perbank_row_buf[bank_idx];
-    if(!bank_buf->valid || bank_buf->rowid != row) {
+    if(!bank_buf->valid || bank_buf->rowid != row || is_dram_write) {
         // precharge (close row and prepare bank for access)
         delay += DRAM_T_PRE;
         // activate (opens row and places into row buffer)
