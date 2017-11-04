@@ -197,7 +197,7 @@ uns64 memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type,uns core
         cache_install(use_cache, lineaddr, is_write, core_id);
         Cache_Line* line = &use_cache->last_evicted_line;
         if(line->valid && line->dirty)
-            delay += memsys_L2_access(sys, line->tag, TRUE, core_id);
+            memsys_L2_access(sys, line->tag, TRUE, core_id);
     }
     return delay;
 }
@@ -216,8 +216,11 @@ uns64   memsys_L2_access(Memsys *sys, Addr lineaddr, Flag is_writeback, uns core
     //To perform writebacks to memory, you must use the dram_access() function
     //This will help us track your memory reads and memory writes
     if(result == MISS) {
-        delay += dram_access(sys->dram, lineaddr, is_writeback);
+        delay += dram_access(sys->dram, lineaddr, FALSE);
         cache_install(sys->l2cache, lineaddr, is_writeback, core_id);
+        Cache_Line* line = &sys->l2cache->last_evicted_line;
+        if(line->valid && line->dirty)
+            dram_access(sys->dram, line->tag, TRUE);
     }
     return delay;
 }
