@@ -93,61 +93,29 @@ uns64   dram_access_sim_rowbuf(DRAM *dram,Addr lineaddr, Flag is_dram_write){
     // You need to write this fuction to track open rows 
     // You will need to compute delay based on row hit/miss/empty
 
-    // With mapping of consecutive rows being in same bank, we have addressing
-    // BankID (n bits) | Row Num (n bits) | Row Column Offset (n bits) | Cache Line Offset (n bits)
-
-
     // Reveal bits used for bank indexing
     bank_idx = (lineaddr / (ROWBUF_SIZE / CACHE_LINESIZE));
     // Use modulo to find the bank index
-    bank_idx = bank_idx % DRAM_BANKS;
+    bank_idx %= DRAM_BANKS;
 
     // Reveal bits used for row indexing
     row = lineaddr / (ROWBUF_SIZE / CACHE_LINESIZE);
-    // Use modulo to find row index
+    // Use division to find row index (upper bits of addr)
     row /= DRAM_BANKS;
-
-    // // Remove byte_in_line offset
-    // lineaddr /= CACHE_LINESIZE;
-
-    // // Remove line_in_row offset
-    // uns64 num_line_in_row = ROWBUF_SIZE / CACHE_LINESIZE;
-    // lineaddr /= num_line_in_row;
-
-    // // Find row in bank for the address (find value for row)
-    // row = lineaddr % ROWBUF_SIZE;
-    // // Remove lower bits from address to index bank
-    // lineaddr /= ROWBUF_SIZE;
-
-    // // Index lineaddr into relevant bank (find value for bank_idx)
-    // // Index is the lower ln(DRAM_BANKS) bits 
-    // bank_idx = lineaddr % DRAM_BANKS;
 
     // Check if row buffer is empty or doesn't contain the row we seek
     Rowbuf_Entry* bank_buf = &dram->perbank_row_buf[bank_idx];
-    // If is write
-    if (is_dram_write) {
-        bank_buf->valid = TRUE;
-        bank_buf->rowid = row;
-        return delay + DRAM_T_PRE + DRAM_T_ACT;
-    }
-
-    if(!bank_buf->valid) {
+    
+    if(!bank_buf->valid || bank_buf->rowid != row || is_dram_write) {
         // precharge (close row and prepare bank for access)
         delay += DRAM_T_PRE;
         // activate (opens row and places into row buffer)
         delay += DRAM_T_ACT;
-        // Update rowid and validity of row
-        bank_buf->rowid = row;
-        bank_buf->valid = TRUE;
-    } else if (bank_buf->rowid != row) {
-        delay += DRAM_T_PRE + DRAM_T_ACT;
-        bank_buf->rowid = row;
-        bank_buf->valid = TRUE;
-    } else if (bank_buf->rowid == row) {
-        bank_buf->rowid = row;
-        bank_buf->valid = TRUE;
     }
+    
+    // Update rowid and validity of row
+    bank_buf->rowid = row;
+    bank_buf->valid = TRUE;
 
     return delay;
 }
