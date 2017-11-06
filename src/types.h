@@ -47,6 +47,9 @@ typedef enum MODE_Enum {
     SIM_MODE_A=1,
     SIM_MODE_B=2,
     SIM_MODE_C=3,
+    SIM_MODE_D=4,
+    SIM_MODE_E=5,
+    SIM_MODE_F=6
 } MODE;
 
 /**************************************************************************************/

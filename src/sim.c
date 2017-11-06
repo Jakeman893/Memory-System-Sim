@@ -1,7 +1,6 @@
  /*************************************************************************
  * File         : sim.c
  * Author       : Moinuddin K. Qureshi 
- * Date         : 23rd March 2015
  * Description  : CMP Memory System Lab 4 of ECE4100/ECE6100
  *************************************************************************/
 
@@ -34,7 +33,7 @@ uns64       ICACHE_ASSOC    = 8;
 
 uns64       L2CACHE_SIZE    = 1024*1024; 
 uns64       L2CACHE_ASSOC   = 16;
-uns64       L2CACHE_REPL    = 0;
+uns64       L2CACHE_REPL    = 0; // 0:LRU 1:RND 2:SWP 3:UCP
 
 uns64       SWP_CORE0_WAYS  = 0;
 

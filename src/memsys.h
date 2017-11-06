@@ -12,9 +12,13 @@ typedef struct Memsys   Memsys;
 
 struct Memsys {
   Cache *dcache;  // For Part A
-  Cache *icache;  // For Part A,B
-  Cache *l2cache; // For Part A,B
-  DRAM  *dram;    // For Part A,B
+  Cache *icache;  // For Part A,B,C
+
+  Cache *dcache_coreid[MAX_CORES];  // For Part D,E,F
+  Cache *icache_coreid[MAX_CORES];  // For Part D,E,F
+  
+  Cache *l2cache; // For Part A,B,C,D,E
+  DRAM  *dram;    // For Part C,D,E
 
    // stats 
   uns64 stat_ifetch_access;
@@ -36,10 +40,14 @@ void    memsys_print_stats(Memsys *sys);
 uns64   memsys_access(Memsys *sys, Addr addr, Access_Type type, uns core_id);
 uns64   memsys_access_modeA(Memsys *sys, Addr lineaddr, Access_Type type, uns core_id);
 uns64   memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type, uns core_id);
+uns64   memsys_access_modeDEF(Memsys *sys, Addr lineaddr, Access_Type type, uns core_id);
 
 
-// For mode B and mode C you must use this function to access L2 
+// For mode B/C/D/E you must use this function to access L2 
 uns64   memsys_L2_access(Memsys *sys, Addr lineaddr, Flag is_writeback, uns core_id);
+
+// This function can convert VPN to PFN
+uns64 memsys_convert_vpn_to_pfn(Memsys *sys, uns64 vpn, uns core_id);
 
 ///////////////////////////////////////////////////////////////////
 
