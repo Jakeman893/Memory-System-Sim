@@ -5,6 +5,7 @@
 #include "cache.h"
 
 
+extern uns64 SWP_CORE0_WAYS; // Input Way partitions for Core 0       
 extern uns64 cycle; // You can use this as timestamp for LRU
 
 ////////////////////////////////////////////////////////////////////

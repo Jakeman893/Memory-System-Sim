@@ -273,28 +273,53 @@ uns64 memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type,uns core
 uns64 memsys_access_modeDEF(Memsys *sys, Addr v_lineaddr, Access_Type type,uns core_id){
     uns64 delay=0;
     Addr p_lineaddr=0;
-  
-    p_lineaddr=v_lineaddr;
+    Flag is_write;
+    Cache* use_cache;
+    Flag result;  
+
+    // Remove page offset from lineaddress
+    Addr v_page_num = v_lineaddr / PAGE_SIZE; 
+    Addr v_page_offset = v_lineaddr % PAGE_SIZE;
+
+    // Decode frame number
+    Addr p_frame_num = memsys_convert_vpn_to_pfn(sys, v_page_num, core_id);
+
+    // Offset will be invariant between translations
+    p_lineaddr = (p_frame_num * PAGE_SIZE) + v_page_offset;
   
     // TODO: First convert lineaddr from virtual (v) to physical (p) using the
     // function memsys_convert_vpn_to_pfn. Page size is defined to be 4KB.
     // NOTE: VPN_to_PFN operates at page granularity and returns page addr
-  
    
-    if(type == ACCESS_TYPE_IFETCH){
-      // YOU NEED TO WRITE THIS PART AND UPDATE DELAY
+    switch(type) {
+        case ACCESS_TYPE_IFETCH:
+            use_cache = sys->icache;
+            is_write = FALSE;
+            delay = ICACHE_HIT_LATENCY;
+            break;
+        case ACCESS_TYPE_LOAD:
+            use_cache = sys->dcache;
+            is_write = FALSE;
+            delay = DCACHE_HIT_LATENCY;
+            break;
+        case ACCESS_TYPE_STORE:
+            use_cache = sys->dcache;
+            is_write = TRUE;
+            delay = DCACHE_HIT_LATENCY;
+            break;
     }
-      
-  
-    if(type == ACCESS_TYPE_LOAD){
-      // YOU NEED TO WRITE THIS PART AND UPDATE DELAY
+    // Access per-core caches
+    result = cache_access(use_cache, p_lineaddr, is_write, core_id);
+    if(result == MISS) {
+        // Access shared L2, thus only one core_id is used
+        delay += memsys_L2_access(sys, p_lineaddr, FALSE, 0);
+        // Install into the cache of core requesting
+        cache_install(use_cache, p_lineaddr, is_write, core_id);
+        Cache_Line* line = &use_cache->last_evicted_line;
+        if(line->valid && line->dirty)
+            // Similarly shared, thus only one core_id
+            memsys_L2_access(sys, line->tag, TRUE, 0);
     }
-    
-  
-    if(type == ACCESS_TYPE_STORE){
-      // YOU NEED TO WRITE THIS PART AND UPDATE DELAY
-    }
-   
     return delay;
   }
 
