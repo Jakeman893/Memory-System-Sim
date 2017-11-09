@@ -78,14 +78,6 @@ uns64 memsys_access(Memsys *sys, Addr addr, Access_Type type, uns core_id)
     
     // all cache transactions happen at line granularity, so get lineaddr
     Addr lineaddr=addr/CACHE_LINESIZE;
-    
-
-    if(SIM_MODE==SIM_MODE_A){
-        delay = memsys_access_modeA(sys,lineaddr,type,core_id);
-    }else{
-        delay = memsys_access_modeBC(sys,lineaddr,type,core_id);
-    }
-
 
     if(SIM_MODE==SIM_MODE_A){
         delay = memsys_access_modeA(sys,lineaddr,type, core_id);
@@ -232,8 +224,8 @@ uns64 memsys_convert_vpn_to_pfn(Memsys *sys, uns64 vpn, uns core_id){
 
 uns64 memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type,uns core_id){
     uns64 delay=0;
-    Flag is_write;
-    Cache* use_cache;
+    Flag is_write = FALSE;
+    Cache* use_cache = NULL;
     Flag result;
 
     switch(type) {
@@ -273,8 +265,8 @@ uns64 memsys_access_modeBC(Memsys *sys, Addr lineaddr, Access_Type type,uns core
 uns64 memsys_access_modeDEF(Memsys *sys, Addr v_lineaddr, Access_Type type,uns core_id){
     uns64 delay=0;
     Addr p_lineaddr=0;
-    Flag is_write;
-    Cache* use_cache;
+    Flag is_write = FALSE;
+    Cache* use_cache = NULL;
     Flag result;  
 
     // Remove page offset from lineaddress
@@ -293,32 +285,33 @@ uns64 memsys_access_modeDEF(Memsys *sys, Addr v_lineaddr, Access_Type type,uns c
    
     switch(type) {
         case ACCESS_TYPE_IFETCH:
-            use_cache = sys->icache;
+            use_cache = sys->icache_coreid[core_id];
             is_write = FALSE;
             delay = ICACHE_HIT_LATENCY;
             break;
         case ACCESS_TYPE_LOAD:
-            use_cache = sys->dcache;
+            use_cache = sys->dcache_coreid[core_id];
             is_write = FALSE;
             delay = DCACHE_HIT_LATENCY;
             break;
         case ACCESS_TYPE_STORE:
-            use_cache = sys->dcache;
+            use_cache = sys->dcache_coreid[core_id];
             is_write = TRUE;
             delay = DCACHE_HIT_LATENCY;
             break;
     }
     // Access per-core caches
     result = cache_access(use_cache, p_lineaddr, is_write, core_id);
-    if(result == MISS) {
-        // Access shared L2, thus only one core_id is used
-        delay += memsys_L2_access(sys, p_lineaddr, FALSE, 0);
+    // Only for simulation of part D
+    if (result == MISS) {
+        // Access shared L2
+        delay += memsys_L2_access(sys, p_lineaddr, FALSE, core_id);
         // Install into the cache of core requesting
         cache_install(use_cache, p_lineaddr, is_write, core_id);
         Cache_Line* line = &use_cache->last_evicted_line;
         if(line->valid && line->dirty)
-            // Similarly shared, thus only one core_id
-            memsys_L2_access(sys, line->tag, TRUE, 0);
+            // Similarly shared
+            memsys_L2_access(sys, line->tag, TRUE, core_id);
     }
     return delay;
   }
