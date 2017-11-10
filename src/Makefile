@@ -11,7 +11,7 @@ all:
 	${CC} ${CFLAGS} core.c dram.c cache.c  sim.c memsys.c   -o ${SIM}
 
 debug: 
-	${CC} ${DFLAGS} ${CFLAGS} core.c dram.c cache.c  sim.c memsys.c   -o ${SIM}
+	${CC} ${DFLAGS} core.c dram.c cache.c  sim.c memsys.c   -o ${SIM}
 
 clean: 
 	$(RM) ${SIM} *.o 

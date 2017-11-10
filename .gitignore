@@ -4,3 +4,4 @@ traces/*
 *.unittest
 *.o
 results/*
+*.out

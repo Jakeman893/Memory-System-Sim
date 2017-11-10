@@ -137,65 +137,61 @@ uns cache_find_victim(Cache *c, uns set_index, uns core_id){
     uns victim=0;
     uns minAccessTime = 0xFFFFFFFF;
 
-    // Simulation without way partitioning
-    if (c->repl_policy == 0 || c->repl_policy == 1) {
-        // If there is space in the cache, don't need to
-        // replace
-        Cache_Line* line;
-        for(uns i = 0; i < c->num_ways; i++) {
-            line = &c->sets[set_index].line[i];    
-            if(!line->valid)
-                return i;
-        }
+    // If there is space in the cache, don't need to
+    // replace
+    Cache_Line* line;
+    for(uns i = 0; i < c->num_ways; i++) {
+        line = &c->sets[set_index].line[i];    
+        if(!line->valid)
+            return i;
+    }
 
-        // Get victim based on policy
-        switch(c->repl_policy){
-            case 0:    // LRU
-                for(uns i = 0; i < c->num_ways; i++) {
-                    Cache_Line* line = &c->sets[set_index].line[i];
-                    if(line->last_access_time < minAccessTime) {
-                        victim = i;
-                        minAccessTime = line->last_access_time;
-                    }
+    // Get victim based on policy
+    switch(c->repl_policy){
+        case 0:    // LRU
+            for(uns i = 0; i < c->num_ways; i++) {
+                line = &c->sets[set_index].line[i];
+                if(line->last_access_time < minAccessTime) {
+                    victim = i;
+                    minAccessTime = line->last_access_time;
                 }
-                break;
-            case 1:    // RAND
-                victim = rand() % c->num_ways;
-                break;
-            default:
-                break;
-        }
-    // Way Partitioning
-    } else {
-        // Offset for core 0
-        uns way_maxidx = SWP_CORE0_WAYS;
-        uns way_offset = 0;
-        if(core_id == 1) {
-            way_maxidx = c->num_ways;
-            way_offset = SWP_CORE0_WAYS;
-        }
-        // If there is space, no need to replace
-        Cache_Line* line;
-        for(uns i = way_offset; i < way_maxidx; i++) {
-            line = &c->sets[set_index].line[i];
-            if(!line->valid)
-                return i;
-        }
-
-        // Get victim based on policy
-        switch(c->repl_policy) {
-            case 0:     //LRU
-                for(uns i = 0; i < way_maxidx; i++) {
-                    Cache_Line* line = &c->sets[set_index].line[i];
-                    if(line->last_access_time < minAccessTime) {
-                        victim = i;
-                        minAccessTime = line->last_access_time;
-                    }
+            }
+            break;
+        case 1:    // RAND
+            victim = rand() % c->num_ways;
+            break;
+        case 2: ;    // Static Way Partitioning
+            uns64 core0_entries = 0;
+            uns64 core1_entries = 0;
+            // Count entries for each way
+            for(uns i = 0; i < c->num_ways; i++) {
+                uns id = c->sets[set_index].line[i].core_id;
+                if(id == 0) { ++core0_entries; }
+                else { ++core1_entries; }
+            }
+            // If one has too many allocated, choose victim from that set
+            // Calculate which core will have entry removed
+            uns victim_core = 0;
+            uns64 SWP_CORE1_WAYS = c->num_ways - SWP_CORE0_WAYS;
+            // If a core has more entries than its quotia, choose victim from its set
+            if(core0_entries > SWP_CORE0_WAYS){
+                victim_core = 0;
+            } else if(core1_entries > SWP_CORE1_WAYS) {
+                victim_core = 1;
+            } else {
+                victim_core = core_id;
+            }
+            // LRU replacement
+            for(uns i = 0; i < c->num_ways; i++) {
+                line = &c->sets[set_index].line[i];
+                if(line->last_access_time < minAccessTime && line->core_id == victim_core) {
+                    victim = i;
+                    minAccessTime = line->last_access_time;
                 }
-                break;
-            case 1:     // RAND
-                victim = way_offset + (rand() % (way_maxidx - way_offset));
-        }
+            }
+            break;
+        default:
+            break;
     }
 
     // Update stats

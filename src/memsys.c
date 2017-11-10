@@ -302,7 +302,7 @@ uns64 memsys_access_modeDEF(Memsys *sys, Addr v_lineaddr, Access_Type type,uns c
     }
     // Access per-core caches
     result = cache_access(use_cache, p_lineaddr, is_write, core_id);
-    // Only for simulation of part D
+    // Only for simulation
     if (result == MISS) {
         // Access shared L2
         delay += memsys_L2_access(sys, p_lineaddr, FALSE, core_id);
