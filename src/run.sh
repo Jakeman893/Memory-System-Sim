@@ -6,6 +6,8 @@
 ######################################################################################
 
 make
+rm ../src.tar.gz
+rm ../results.tar.gz
 rm ../results/*
 
 ########## ---------------  A.1 ---------------- ################
@@ -54,6 +56,14 @@ echo "done"
 # ./sim -mode 6 -L2repl 3  ../traces/bzip2.mtr.gz ../traces/libq.mtr.gz  > ../results/F.mix1.res
 # ./sim -mode 6 -L2repl 3  ../traces/bzip2.mtr.gz ../traces/lbm.mtr.gz  > ../results/F.mix2.res
 # ./sim -mode 6 -L2repl 3  ../traces/lbm.mtr.gz ../traces/libq.mtr.gz  > ../results/F.mix3.res
+
+echo "Make tar archive..."
+
+tar -zcvpf ../results.tar.gz ../results
+
+tar -zcvpf ../src.tar.gz ../src --exclude=*.out --exclude=sim
+
+echo "done"
 
 echo "All Done. Check the .res file in ../results directory";
 

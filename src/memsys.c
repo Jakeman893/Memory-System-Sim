@@ -18,11 +18,11 @@ extern MODE   SIM_MODE;
 extern uns64  CACHE_LINESIZE;
 extern uns64  REPL_POLICY;
 
-extern uns64  DCACHE_SIZE; 
-extern uns64  DCACHE_ASSOC; 
-extern uns64  ICACHE_SIZE; 
-extern uns64  ICACHE_ASSOC; 
-extern uns64  L2CACHE_SIZE; 
+extern uns64  DCACHE_SIZE;
+extern uns64  DCACHE_ASSOC;
+extern uns64  ICACHE_SIZE;
+extern uns64  ICACHE_ASSOC;
+extern uns64  L2CACHE_SIZE;
 extern uns64  L2CACHE_ASSOC;
 extern uns64  L2CACHE_REPL;
 extern uns64  NUM_CORES;
@@ -31,28 +31,28 @@ extern uns64  NUM_CORES;
 ////////////////////////////////////////////////////////////////////
 
 
-Memsys *memsys_new(void) 
+Memsys *memsys_new(void)
 {
     Memsys *sys = (Memsys *) calloc (1, sizeof (Memsys));
-    
+
       if(SIM_MODE==SIM_MODE_A){
         sys->dcache = cache_new(DCACHE_SIZE, DCACHE_ASSOC, CACHE_LINESIZE, REPL_POLICY);
       }
-    
+
       if(SIM_MODE==SIM_MODE_B){
         sys->dcache = cache_new(DCACHE_SIZE, DCACHE_ASSOC, CACHE_LINESIZE, REPL_POLICY);
         sys->icache = cache_new(ICACHE_SIZE, ICACHE_ASSOC, CACHE_LINESIZE, REPL_POLICY);
         sys->l2cache = cache_new(L2CACHE_SIZE, L2CACHE_ASSOC, CACHE_LINESIZE, REPL_POLICY);
         sys->dram    = dram_new();
       }
-    
+
       if(SIM_MODE==SIM_MODE_C){
         sys->dcache = cache_new(DCACHE_SIZE, DCACHE_ASSOC, CACHE_LINESIZE, REPL_POLICY);
         sys->icache = cache_new(ICACHE_SIZE, ICACHE_ASSOC, CACHE_LINESIZE, REPL_POLICY);
         sys->l2cache = cache_new(L2CACHE_SIZE, L2CACHE_ASSOC, CACHE_LINESIZE, REPL_POLICY);
         sys->dram    = dram_new();
       }
-    
+
       if( (SIM_MODE==SIM_MODE_D) || (SIM_MODE==SIM_MODE_E) || (SIM_MODE==SIM_MODE_F) ) {
         sys->l2cache = cache_new(L2CACHE_SIZE, L2CACHE_ASSOC, CACHE_LINESIZE, L2CACHE_REPL);
         sys->dram    = dram_new();
@@ -62,7 +62,7 @@ Memsys *memsys_new(void)
           sys->icache_coreid[ii] = cache_new(ICACHE_SIZE, ICACHE_ASSOC, CACHE_LINESIZE, REPL_POLICY);
         }
       }
-    
+
       return sys;
 }
 
@@ -74,8 +74,8 @@ Memsys *memsys_new(void)
 uns64 memsys_access(Memsys *sys, Addr addr, Access_Type type, uns core_id)
 {
     uns delay=0;
-    
-    
+
+
     // all cache transactions happen at line granularity, so get lineaddr
     Addr lineaddr=addr/CACHE_LINESIZE;
 
@@ -90,7 +90,7 @@ uns64 memsys_access(Memsys *sys, Addr addr, Access_Type type, uns core_id)
     if((SIM_MODE==SIM_MODE_D)||(SIM_MODE==SIM_MODE_E) ||(SIM_MODE==SIM_MODE_F)  ){
         delay = memsys_access_modeDEF(sys,lineaddr,type, core_id);
     }
-    
+
     //update the stats
     if(type==ACCESS_TYPE_IFETCH){
         sys->stat_ifetch_access++;
@@ -150,7 +150,7 @@ void memsys_print_stats(Memsys *sys)
    if(SIM_MODE==SIM_MODE_A){
     cache_print_stats(sys->dcache, "DCACHE");
   }
-  
+
   if((SIM_MODE==SIM_MODE_B)||(SIM_MODE==SIM_MODE_C)){
     cache_print_stats(sys->icache, "ICACHE");
     cache_print_stats(sys->dcache, "DCACHE");
@@ -166,7 +166,7 @@ void memsys_print_stats(Memsys *sys)
     cache_print_stats(sys->dcache_coreid[1], "DCACHE_1");
     cache_print_stats(sys->l2cache, "L2CACHE");
     dram_print_stats(sys->dram);
-    
+
   }
 
 }
@@ -178,16 +178,16 @@ void memsys_print_stats(Memsys *sys)
 uns64 memsys_access_modeA(Memsys *sys, Addr lineaddr, Access_Type type, uns core_id){
   Flag needs_dcache_access=FALSE;
   Flag is_write=FALSE;
-  
+
   if(type == ACCESS_TYPE_IFETCH){
     // no icache in this mode
   }
-    
+
   if(type == ACCESS_TYPE_LOAD){
     needs_dcache_access=TRUE;
     is_write=FALSE;
   }
-  
+
   if(type == ACCESS_TYPE_STORE){
     needs_dcache_access=TRUE;
     is_write=TRUE;
@@ -207,7 +207,7 @@ uns64 memsys_access_modeA(Memsys *sys, Addr lineaddr, Access_Type type, uns core
 /////////////////////////////////////////////////////////////////////
 // This function converts virtual page number (VPN) to physical frame
 // number (PFN).  Note, you will need additional operations to obtain
-// VPN from lineaddr and to get physical lineaddr using PFN. 
+// VPN from lineaddr and to get physical lineaddr using PFN.
 /////////////////////////////////////////////////////////////////////
 
 uns64 memsys_convert_vpn_to_pfn(Memsys *sys, uns64 vpn, uns core_id){
@@ -267,22 +267,22 @@ uns64 memsys_access_modeDEF(Memsys *sys, Addr v_lineaddr, Access_Type type,uns c
     Addr p_lineaddr=0;
     Flag is_write = FALSE;
     Cache* use_cache = NULL;
-    Flag result;  
+    Flag result;
 
     // Remove page offset from lineaddress
-    Addr v_page_num = v_lineaddr / PAGE_SIZE; 
-    Addr v_page_offset = v_lineaddr % PAGE_SIZE;
+    Addr v_page_num = v_lineaddr / (PAGE_SIZE / CACHE_LINESIZE);
+    Addr v_page_offset = v_lineaddr % (PAGE_SIZE / CACHE_LINESIZE);
 
     // Decode frame number
     Addr p_frame_num = memsys_convert_vpn_to_pfn(sys, v_page_num, core_id);
 
     // Offset will be invariant between translations
-    p_lineaddr = (p_frame_num * PAGE_SIZE) + v_page_offset;
-  
+    p_lineaddr = (p_frame_num * (PAGE_SIZE / CACHE_LINESIZE)) + v_page_offset;
+
     // TODO: First convert lineaddr from virtual (v) to physical (p) using the
     // function memsys_convert_vpn_to_pfn. Page size is defined to be 4KB.
     // NOTE: VPN_to_PFN operates at page granularity and returns page addr
-   
+
     switch(type) {
         case ACCESS_TYPE_IFETCH:
             use_cache = sys->icache_coreid[core_id];
@@ -309,9 +309,11 @@ uns64 memsys_access_modeDEF(Memsys *sys, Addr v_lineaddr, Access_Type type,uns c
         // Install into the cache of core requesting
         cache_install(use_cache, p_lineaddr, is_write, core_id);
         Cache_Line* line = &use_cache->last_evicted_line;
-        if(line->valid && line->dirty)
+        if(line->valid && line->dirty) {
             // Similarly shared
-            memsys_L2_access(sys, line->tag, TRUE, core_id);
+            memsys_L2_access(sys, line->tag, TRUE, line->core_id);
+            line->valid = FALSE;
+        }
     }
     return delay;
   }
@@ -332,8 +334,10 @@ uns64   memsys_L2_access(Memsys *sys, Addr lineaddr, Flag is_writeback, uns core
         delay += dram_access(sys->dram, lineaddr, FALSE);
         cache_install(sys->l2cache, lineaddr, is_writeback, core_id);
         Cache_Line* line = &sys->l2cache->last_evicted_line;
-        if(line->valid && line->dirty)
+        if(line->valid && line->dirty) {
             dram_access(sys->dram, line->tag, TRUE);
+            line->valid = FALSE;
+        }
     }
     return delay;
 }

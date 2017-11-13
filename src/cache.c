@@ -171,15 +171,13 @@ uns cache_find_victim(Cache *c, uns set_index, uns core_id){
             }
             // If one has too many allocated, choose victim from that set
             // Calculate which core will have entry removed
-            uns victim_core = 0;
+            uns victim_core = core_id;
             uns64 SWP_CORE1_WAYS = c->num_ways - SWP_CORE0_WAYS;
             // If a core has more entries than its quotia, choose victim from its set
-            if(core0_entries > SWP_CORE0_WAYS){
-                victim_core = 0;
-            } else if(core1_entries > SWP_CORE1_WAYS) {
+            if(core0_entries < SWP_CORE0_WAYS){
                 victim_core = 1;
-            } else {
-                victim_core = core_id;
+            } else if(core1_entries < SWP_CORE1_WAYS) {
+                victim_core = 0;
             }
             // LRU replacement
             for(uns i = 0; i < c->num_ways; i++) {
